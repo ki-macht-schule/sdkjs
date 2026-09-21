@@ -274,7 +274,12 @@ eq(names(trailPlan.gaps.filter(function (g) { return g.insertAt === 3; })), ["A"
 
 // --- who may be renamed ------------------------------------------------
 
+ok(rail.canRename({name: "Neuer Abschnitt"}) === false,
+	"without kiwiUnitIds nothing is renameable");
+global.Asc = {editor: {documentOpenOptions: {kiwiProtocol: 1, kiwiUnitIds: ["u1"]}}};
 ok(rail.canRename({name: "Neuer Abschnitt"}) === true, "a user section may be renamed");
+ok(rail.canRename({name: "u1"}) === false, "a unit id may not");
+ok(rail.canRename({name: "_kurs"}) === false, "_kurs may not");
 ok(rail.canRename({name: null}) === false, "a nameless one may not");
 
 // --- headers carry their slide count ---------------------------------

@@ -104,16 +104,30 @@
 		return map || {};
 	}
 
+	function unitIds() {
+		var options = openOptions();
+		var ids = options && options.kiwiUnitIds;
+		return (ids && Object.prototype.toString.call(ids) === "[object Array]")
+			? ids
+			: null;
+	}
+
+	function kiwiProtocol() {
+		var options = openOptions();
+		return options ? options.kiwiProtocol : undefined;
+	}
+
 	/**
 	 * A section whose name is a unit id belongs to that unit: renaming
 	 * it would break the title lookup and the deck's identity. A section
 	 * the user added here has a free-text name and can be renamed -- and
 	 * still can after a reload, which a "freshly created" flag could not
-	 * have managed.
+	 * have managed. No id list, or the wrong protocol: nothing is
+	 * renameable.
 	 */
 	function canRename(section, presentation) {
 		var api = sectionsApi();
-		return !!api && api.canRenameSection(section, unitTitles(), presentation);
+		return !!api && api.canRenameSection(section, unitIds(), presentation, kiwiProtocol());
 	}
 
 	function titleOf(section, titles) {

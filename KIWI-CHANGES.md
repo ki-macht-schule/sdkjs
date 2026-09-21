@@ -5,11 +5,9 @@ auf Commit `72b0421c0b` (Merge `release/v9.4.0` in `master`). Die Datei
 sagt, wo der Delta liegt, damit ein Versions-Bump ihn findet.
 
 Die Konvention entspricht `onlyoffice-documentserver/KIWI-CHANGES.md`
-(AGPL §13 Corresponding Source). Solange das gepatchte `sdk-all.js`
-per `docker cp` in einen laufenden Container gelegt wird, beschreibt
-jene Datei die laufende Version nicht. Vor dem ersten Deploy muss der
-sdkjs-Build ins Overlay-Dockerfile, und der Absatz dort nachgezogen
-werden.
+(AGPL §13 Corresponding Source). Das Overlay-Dockerfile ruft
+`build-sdk-all.py` zur Build-Zeit und pinnt den Commit in
+`ARG SDKJS_SHA`. `docker cp` bleibt ein Dev-Trick, kein Deploy.
 
 ## Build und Deploy
 
@@ -22,11 +20,35 @@ python3 build-sdk-all.py -o /tmp/sdk-all.js
 ```
 
 Der **Deploy-Weg** ist das Overlay-Dockerfile
-(`onlyoffice-documentserver`), das diesen Fork als Submodul führt und
-das Skript zur Build-Zeit ruft. `docker cp` ist ein Dev-Trick zum
-Ausprobieren, kein Deploy: ein per `docker cp` bespielter Container
-entspricht keinem Repo, und damit beschreibt die veröffentlichte
-Quelle die laufende Version nicht (AGPL §13).
+(`onlyoffice-documentserver`): `ARG SDKJS_SHA` holt genau diesen
+Commit (kein Submodul, `build_git.sh` klont nur das Overlay).
+`docker cp` ist ein Dev-Trick. Ein per `docker cp` bespielter
+Container entspricht keinem Repo (AGPL §13).
+
+## So geht ein Bump
+
+Jedes Upstream-Upgrade ist ein Rebase der Rail-Hooks, kein Cherry-Pick
+einzelner Dateien. Wer das macht, wenn der Autor fehlt, folgt genau
+dieser Reihenfolge — sonst stirbt der Fork still.
+
+1. **Anker.** Die 14 Hook-Namen stehen in `PresentationSections.js`
+   (`install`, `hookHistoryChanges`, `hookPresentation`) und
+   `PresentationThemeRemount.js`. Vor dem Rebase `rg -n "kiwi|hookPresentation|hookHistory"`
+   im frischen Upstream; fehlen die Call-Sites, ist der Rebase die Arbeit,
+   nicht das Bundle.
+2. **Rebase** `kiwi` auf den neuen `release/vX.Y.0`. Konflikte nur in
+   den Hook-Dateien lösen. `Presentation.js` bleibt unangetastet.
+3. **Bundle.** `python3 build-sdk-all.py -o /tmp/sdk-all.js`. Dann
+   `sdk-all.bin` und `sdk-all.cache` im Image **löschen**. Liegen sie,
+   läuft der ungepatchte Editor.
+4. **Tag.** Overlay-Image unveränderlich als `:kiwi-<YYYYMMDD>-<sdkjs-sha7>`.
+   Compose pinnt den Tag. Das alte Image bleibt, bis E5c grün ist.
+5. **Negativlauf.** Container mit liegen gebliebener `sdk-all.bin`
+   muss die Leiste **nicht** zeigen. ConvertService/x2t ist kein
+   Section-Test.
+
+Preis: jedes DS-Upgrade = diese fünf Schritte. Was ihn drückt: null
+Zeilen in `Presentation.js`, benannte Hooks, `build-sdk-all.py`.
 
 ## sdk-all.bin
 

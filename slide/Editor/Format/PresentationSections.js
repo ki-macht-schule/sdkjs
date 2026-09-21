@@ -611,12 +611,33 @@
 	 * The caller supplies the unit ids, so the model stays ignorant of
 	 * what kiwi puts in a name.
 	 */
-	function canRenameSection(section, unitIds, presentation) {
+	function isReservedName(name) {
+		return name === "_kurs";
+	}
+
+	function unitIdList(unitIds) {
+		return (unitIds && Object.prototype.toString.call(unitIds) === "[object Array]")
+			? unitIds
+			: null;
+	}
+
+	function protocolOk(protocol) {
+		return protocol === 1;
+	}
+
+	function canRenameSection(section, unitIds, presentation, protocol) {
 		if (!section || !section.name)
 			return false;
 		if (presentation && !canEdit(presentation))
 			return false;
-		return !(unitIds && unitIds[section.name]);
+		if (isReservedName(section.name))
+			return false;
+		if (!protocolOk(protocol))
+			return false;
+		var ids = unitIdList(unitIds);
+		if (!ids)
+			return false;
+		return ids.indexOf(section.name) === -1;
 	}
 
 	function renameSection(presentation, section, name) {
@@ -645,10 +666,23 @@
 	 * The slides travel with it; the cut list is rebuilt from the run
 	 * lengths so no index has to be patched by hand.
 	 */
+	function canMoveSection(section, destIndex, presentation) {
+		var sections = presentation && presentation.Sections;
+		if (!section || !sections)
+			return false;
+		if (isReservedName(section.name))
+			return false;
+		if (destIndex <= 0 && sections[0] && isReservedName(sections[0].name))
+			return false;
+		return true;
+	}
+
 	function moveSection(presentation, section, destIndex) {
 		var sections = presentation && presentation.Sections;
 		var slides = presentation && presentation.Slides;
 		if (!sections || !slides || !section || !canEdit(presentation))
+			return false;
+		if (!canMoveSection(section, destIndex, presentation))
 			return false;
 		var from = sections.indexOf(section);
 		if (from === -1)
@@ -1037,6 +1071,8 @@
 		canAddSection: canAddSection,
 		renameSection: renameSection,
 		canRenameSection: canRenameSection,
+		canMoveSection: canMoveSection,
+		isReservedName: isReservedName,
 		moveSection: moveSection,
 		setDropResolver: setDropResolver,
 		syncFromChange: syncFromChange,
