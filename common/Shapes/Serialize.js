@@ -32,6 +32,10 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+/*
+ * MODIFIED by KI macht Schule gGmbH, 2026: load-time repairs after LoadDocument (sections, theme remount).
+ * See KIWI-CHANGES.md in the repository root for the full delta.
+ */
 
 "use strict";
 
@@ -296,6 +300,16 @@ function BinaryPPTYLoader()
         this.fields.length = 0;
 
         this.LoadDocument();
+        // kiwi: both are load-time repairs on the just-read document.
+        // Neither belongs in a writer: a serializer does not change what
+        // it serializes.
+        if (this.presentation && AscCommonSlide)
+        {
+            if (AscCommonSlide.PresentationSections)
+                AscCommonSlide.PresentationSections.apply(this.presentation);
+            if (AscCommonSlide.PresentationThemeRemount)
+                AscCommonSlide.PresentationThemeRemount.remountOfficeHijacks(this.presentation);
+        }
         if(AscFonts.IsCheckSymbols)
         {
             var bLoad = AscCommon.g_oIdCounter.m_bLoad;

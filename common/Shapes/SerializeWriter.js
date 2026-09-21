@@ -32,6 +32,10 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+/*
+ * MODIFIED by KI macht Schule gGmbH, 2026: write PPTY record 7 (p14:sectionLst).
+ * See KIWI-CHANGES.md in the repository root for the full delta.
+ */
 
 "use strict";
 
@@ -1303,6 +1307,9 @@ function CBinaryFileWriter()
         if (presentation.writecomments) {
             this.WriteComments(10, presentation.writecomments);
         }
+
+        if (typeof AscCommonSlide !== "undefined" && AscCommonSlide.PresentationSections)
+            AscCommonSlide.PresentationSections.write(this, presentation);
 
         this.EndRecord();
     };
