@@ -11,9 +11,14 @@ Die Konvention entspricht `onlyoffice-documentserver/KIWI-CHANGES.md`
 
 ## Build und Deploy
 
-`build-sdk-all.py` ist der ganze Build: eine Konkatenation der in
-`configs/slide.json` gelisteten Dateien, in Reihenfolge, ohne Toolchain
-und pro Commit byte-identisch.
+`build-sdk-all.py` ist der ganze Build: eine Konkatenation der
+**common**-Gruppe aus `configs/slide.json`, in Reihenfolge, in einem
+IIFE, ohne Toolchain und pro Commit byte-identisch. Die **min**-Gruppe
+bleibt das `sdk-all-min.js` aus dem Upstream-Image — beide Dateien
+landen in demselben Realm. Wer min noch einmal in `sdk-all.js` packt,
+bekommt `SyntaxError: Identifier 'c_oAscPresentationViewMode' has
+already been declared` und der Editor stirbt, bevor `WordControl`
+existiert.
 
 ```
 python3 build-sdk-all.py -o /tmp/sdk-all.js
@@ -57,9 +62,12 @@ lädt `slide/sdk-all.bin`, wenn die Datei da ist — ein Snapshot des
 ungepatchten SDK. Nach einem Bundle-Deploy `sdk-all.bin` und
 `sdk-all.cache` löschen, sonst laufen weder Write noch Leiste.
 
-Nicht `sdk-all-min.js` ersetzen (offizielles 2015er Min). Concat von
-`configs/slide.json` nach `/tmp`, dann nach
+Nicht `sdk-all-min.js` ersetzen — das ist das aktuelle Upstream-Min
+(das Datum 2015 auf der Datei ist nur ein Zeitstempel). Concat nur
+der `common`-Gruppe nach `/tmp`, dann nach
 `/var/www/onlyoffice/documentserver/sdkjs/slide/sdk-all.js`.
+`python3 build-sdk-all.test.py` muss grün sein, bevor das Image
+gebaut wird.
 
 ## Modell: ein Abschnitt ist ein Schnitt, keine Menge
 
@@ -300,6 +308,7 @@ Tests:
 node slide/Editor/Format/PresentationSections.test.js      #  70 checks
 node slide/Editor/Format/PresentationSectionRail.test.js   # 103 checks
 node slide/Editor/Format/PresentationThemeRemount.test.js  #  3 checks
+python3 build-sdk-all.test.py
 ```
 
 `PresentationSections.test.js` enthält einen handgeschriebenen
