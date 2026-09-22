@@ -277,9 +277,19 @@ eq(names(trailPlan.gaps.filter(function (g) { return g.insertAt === 3; })), ["A"
 ok(rail.canRename({name: "Neuer Abschnitt"}) === false,
 	"without kiwiUnitIds nothing is renameable");
 global.Asc = {editor: {documentOpenOptions: {kiwiProtocol: 1, kiwiUnitIds: ["u1"]}}};
+ok(rail.canRename({name: "Neuer Abschnitt"}) === false,
+	"without kiwiReserved nothing is renameable");
+ok(rail.canDrag({name: "Neuer Abschnitt"}) === false, "and nothing is draggable");
+global.Asc.editor.documentOpenOptions.kiwiReserved = [];
 ok(rail.canRename({name: "Neuer Abschnitt"}) === true, "a user section may be renamed");
 ok(rail.canRename({name: "u1"}) === false, "a unit id may not");
-ok(rail.canRename({name: "_kurs"}) === false, "_kurs may not");
+ok(rail.canRename({name: "_kurs"}) === true, "an unlisted name is just a name");
+ok(rail.canDrag({name: "_kurs"}) === true, "and it can be dragged");
+global.Asc.editor.documentOpenOptions.kiwiReserved = ["_kurs"];
+ok(rail.canRename({name: "_kurs"}) === false, "a reserved name may not be renamed");
+ok(rail.canDrag({name: "_kurs"}) === false, "and its bar is not a drag handle");
+ok(rail.canRename({name: "Neuer Abschnitt"}) === true, "a user section still may");
+global.Asc.editor.documentOpenOptions.kiwiReserved = [];
 ok(rail.canRename({name: null}) === false, "a nameless one may not");
 
 // --- headers carry their slide count ---------------------------------
@@ -394,8 +404,12 @@ eq(rail.hostMouseMove(h, 40, h.m_arrPages[4].top + 21, 1).repaint, false,
 	"moving within it does not");
 var seenChip = h.sectionPointer;
 ok(seenChip.x === 40, "only the pointer is remembered");
+h.HeaderTrack = {section: hp.Sections[0]};
+h.sectionGap = {insertAt: 3};
 rail.hostClearHover(h);
 ok(h.sectionPointer === null, "and leaving forgets it");
+ok(h.sectionGap === null, "and the drop target");
+ok(h.HeaderTrack === null, "and the drag");
 
 // the drop target, as ConvertCoords2 asks for it
 var gapAt = rail.hostDropIndex(h, 40, h.sectionPlan.headers[1].bottom + 4, true);
@@ -414,5 +428,21 @@ bad.sectionsUnbound = true;
 var badHost = host(bad, 4);
 ok(badHost.sectionPlan === null, "no plan for an unbound deck");
 ok(rail.hostMouseDown(badHost, 40, 40) === null, "so nothing in the strip is ours");
+
+global.Asc.editor.documentOpenOptions.kiwiReserved = ["_kurs"];
+var intro = deck(2, [{name: "_kurs", at: 0}, {name: "u1", at: 1}]);
+intro.CanEdit = function () { return true; };
+var ih = host(intro, 2);
+var introBar = ih.sectionPlan.headers[0];
+eq(rail.hostMouseDown(ih, introBar.left + 60, introBar.top + 5).action, "locked",
+	"a reserved bar does not start a drag");
+ok(ih.HeaderTrack == null, "and no track is armed");
+eq(rail.hostMouseDown(ih, introBar.left + 10, introBar.top + 5).action, "collapsed",
+	"the chevron on it still collapses");
+var drag = rail.beginTrack(intro.Sections[1], 0, 0);
+rail.moveTrack(drag, 40, 0);
+eq(rail.endTrack(drag, introBar.left + 10, introBar.top + 2, ih.sectionPlan.headers, intro, true).action,
+	"none", "a drop in front of the reserved bar is refused");
+global.Asc.editor.documentOpenOptions.kiwiReserved = [];
 
 console.log("PresentationSectionRail: " + passed + " checks passed");

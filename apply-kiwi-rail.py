@@ -16,10 +16,13 @@
 #
 """Apply the kiwi section rail hooks to a pristine DrawingDocument.js.
 
-Every hook is a one-line delegation into PresentationSectionRail.js.
 Each anchor must appear exactly once, or the script refuses -- that is
 the rebase check: after an upstream bump, run it and it tells you which
 anchor moved.
+
+A replace hook's ``old`` string is the whole span that disappears. A
+shorter locator would leave the old code in the file. Insert hooks are
+already the seam; do not shorten the replace ones.
 """
 import sys
 
@@ -42,7 +45,8 @@ hook(
 		if (0 === global_mouseEvent.Button && oThis.KiwiRail())
 		{
 			var railPos = oThis.ConvertCoords(global_mouseEvent.X, global_mouseEvent.Y);
-			var railDown = oThis.KiwiRail().hostMouseDown(oThis, railPos.X, railPos.Y);
+			var railDown = oThis.KiwiRail().hostMouseDown(oThis, railPos.X, railPos.Y,
+				(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1);
 			if (railDown)
 			{
 				if ("rename" === railDown.action)
@@ -76,7 +80,8 @@ hook(
     """		if (oThis.HeaderTrack && oThis.KiwiRail())
 		{
 			var trackPos = oThis.ConvertCoords(global_mouseEvent.X, global_mouseEvent.Y);
-			var railTrack = oThis.KiwiRail().hostMouseMove(oThis, trackPos.X, trackPos.Y);
+			var railTrack = oThis.KiwiRail().hostMouseMove(oThis, trackPos.X, trackPos.Y,
+				(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1);
 			oThis.m_oWordControl.m_oThumbnails.HtmlElement.style.cursor = railTrack.cursor || "move";
 			return;
 		}
@@ -103,7 +108,8 @@ hook(
 """,
     """		var cursor_moved = "default";
 		var railHover = oThis.KiwiRail()
-			? oThis.KiwiRail().hostMouseMove(oThis, pos.X, pos.Y)
+			? oThis.KiwiRail().hostMouseMove(oThis, pos.X, pos.Y,
+				(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1)
 			: null;
 		if (railHover)
 		{
@@ -369,13 +375,12 @@ hook(
 				? thumbnailWidth * slidesCount
 				: thumbnailHeight * slidesCount;
 			const railSize = window.AscCommonSlide && window.AscCommonSlide.PresentationSectionRail;
-			if (railSize && !this.IsMasterMode() && oPresentation && oPresentation.Sections
-				&& oPresentation.Sections.length && !oPresentation.IsVisioEditor()) {
+			if (railSize && railSize.railable(oPresentation, this)) {
 				cumulativeThumbnailLength += railSize.extraLength(
 					oPresentation,
 					slidesCount,
 					(isHorizontalOrientation ? thumbnailWidth : thumbnailHeight) + 3 * this.const_border_w,
-					AscCommon.AscBrowser.retinaPixelRatio
+					(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1
 				);
 			}""",
 )

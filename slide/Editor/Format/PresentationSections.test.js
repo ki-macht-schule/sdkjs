@@ -323,10 +323,19 @@ ok(sections.canRenameSection(made, units, add, 1) === true, "a section the user 
 ok(sections.canRenameSection(add.Sections[0], units, add, 1) === false, "a unit's section may not");
 ok(sections.canRenameSection(made, null, add, 1) === false, "with no id list, nothing is renameable");
 ok(sections.canRenameSection(made, units, add) === false, "without kiwiProtocol, nothing is renameable");
-var reserved = deck(2, [{name: "_kurs", at: 0}]);
-ok(sections.canRenameSection(reserved.Sections[0], ["u1"], reserved, 1) === false, "_kurs is not renameable");
-ok(sections.canMoveSection(reserved.Sections[0], 1, reserved) === false, "_kurs is not movable");
-ok(sections.moveSection(reserved, reserved.Sections[0], 1) === false, "moving _kurs is refused");
+ok(sections.canRenameSection(made, units, add, 1, null) === false, "a missing reserved list locks every name");
+var reserved = deck(2, [{name: "_kurs", at: 0}, {name: "u1", at: 1}]);
+var hold = ["_kurs"];
+ok(sections.canRenameSection(reserved.Sections[0], ["u1"], reserved, 1, []) === true,
+	"the name is free until the list says otherwise");
+ok(sections.canRenameSection(reserved.Sections[0], ["u1"], reserved, 1, hold) === false,
+	"a listed name is not renameable");
+ok(sections.canMoveSection(reserved.Sections[0], 1, reserved, hold) === false, "a listed name is not movable");
+ok(sections.moveSection(reserved, reserved.Sections[0], 1, hold) === false, "moving it is refused");
+ok(sections.canMoveSection(reserved.Sections[1], 0, reserved, hold) === false,
+	"nothing moves in front of a reserved first section");
+ok(sections.renameSection(reserved, reserved.Sections[0], "Kursfolien", hold) === false,
+	"renameSection honours the list");
 ok(sections.renameSection(add, made, "Vertiefung") === true, "renaming works");
 eq(made.name, "Vertiefung", "and lands");
 ok(sections.renameSection(add, second, "Vertiefung") === false, "a duplicate name is refused");

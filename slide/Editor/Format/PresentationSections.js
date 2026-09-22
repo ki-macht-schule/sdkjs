@@ -608,11 +608,17 @@
 	 * would break the title lookup and the deck's own identity. Anything
 	 * else -- a section the user added here -- is free.
 	 *
-	 * The caller supplies the unit ids, so the model stays ignorant of
-	 * what kiwi puts in a name.
+	 * The caller supplies both lists. This module does not know which
+	 * names kiwi reserves. ``undefined`` means the caller is not on that
+	 * contract (model tests, a plain move). ``null`` or any non-array
+	 * fails closed: every name is reserved. An array is the list.
 	 */
-	function isReservedName(name) {
-		return name === "_kurs";
+	function isReservedName(name, reserved) {
+		if (reserved === undefined)
+			return false;
+		if (!reserved || Object.prototype.toString.call(reserved) !== "[object Array]")
+			return true;
+		return reserved.indexOf(name) !== -1;
 	}
 
 	function unitIdList(unitIds) {
@@ -625,12 +631,12 @@
 		return protocol === 1;
 	}
 
-	function canRenameSection(section, unitIds, presentation, protocol) {
+	function canRenameSection(section, unitIds, presentation, protocol, reserved) {
 		if (!section || !section.name)
 			return false;
 		if (presentation && !canEdit(presentation))
 			return false;
-		if (isReservedName(section.name))
+		if (isReservedName(section.name, reserved))
 			return false;
 		if (!protocolOk(protocol))
 			return false;
@@ -640,8 +646,10 @@
 		return ids.indexOf(section.name) === -1;
 	}
 
-	function renameSection(presentation, section, name) {
+	function renameSection(presentation, section, name, reserved) {
 		if (!section || !name || !canEdit(presentation))
+			return false;
+		if (isReservedName(section.name, reserved))
 			return false;
 		var trimmed = String(name).replace(/^\s+|\s+$/g, "");
 		if (!trimmed)
@@ -666,23 +674,23 @@
 	 * The slides travel with it; the cut list is rebuilt from the run
 	 * lengths so no index has to be patched by hand.
 	 */
-	function canMoveSection(section, destIndex, presentation) {
+	function canMoveSection(section, destIndex, presentation, reserved) {
 		var sections = presentation && presentation.Sections;
 		if (!section || !sections)
 			return false;
-		if (isReservedName(section.name))
+		if (isReservedName(section.name, reserved))
 			return false;
-		if (destIndex <= 0 && sections[0] && isReservedName(sections[0].name))
+		if (destIndex <= 0 && sections[0] && isReservedName(sections[0].name, reserved))
 			return false;
 		return true;
 	}
 
-	function moveSection(presentation, section, destIndex) {
+	function moveSection(presentation, section, destIndex, reserved) {
 		var sections = presentation && presentation.Sections;
 		var slides = presentation && presentation.Slides;
 		if (!sections || !slides || !section || !canEdit(presentation))
 			return false;
-		if (!canMoveSection(section, destIndex, presentation))
+		if (!canMoveSection(section, destIndex, presentation, reserved))
 			return false;
 		var from = sections.indexOf(section);
 		if (from === -1)

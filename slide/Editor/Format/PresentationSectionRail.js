@@ -118,6 +118,20 @@
 	}
 
 	/**
+	 * Names the host marked reserved. Missing or not a list is ``null``:
+	 * the model then treats every name as reserved.
+	 */
+	function reservedNames() {
+		var options = openOptions();
+		if (!options || !Object.prototype.hasOwnProperty.call(options, "kiwiReserved"))
+			return null;
+		var names = options.kiwiReserved;
+		if (!names || Object.prototype.toString.call(names) !== "[object Array]")
+			return null;
+		return names;
+	}
+
+	/**
 	 * A section whose name is a unit id belongs to that unit: renaming
 	 * it would break the title lookup and the deck's identity. A section
 	 * the user added here has a free-text name and can be renamed -- and
@@ -127,7 +141,15 @@
 	 */
 	function canRename(section, presentation) {
 		var api = sectionsApi();
-		return !!api && api.canRenameSection(section, unitIds(), presentation, kiwiProtocol());
+		return !!api && api.canRenameSection(
+			section, unitIds(), presentation, kiwiProtocol(), reservedNames()
+		);
+	}
+
+	/** A reserved bar is not a drag handle. View-only still is. */
+	function canDrag(section) {
+		var api = sectionsApi();
+		return !!api && !api.isReservedName(section && section.name, reservedNames());
 	}
 
 	function titleOf(section, titles) {
@@ -435,10 +457,6 @@
 	}
 
 	/**
-	 * The "new section" chip for slide *index*, or null when a cut
-	 * there is not possible. It sits on the slide, never in a gap.
-	 */
-	/**
 	 * The chip marks the cut it would make, so it sits IN the gap
 	 * between two thumbnails, centred on the slide below it.
 	 *
@@ -708,15 +726,19 @@
 		var down = vertical === false
 			? x > (dest.left + dest.right) / 2
 			: y > (dest.top + dest.bottom) / 2;
+		var destIndex = down ? at + 1 : at;
+		var api = sectionsApi();
+		if (api && !api.canMoveSection(track.section, destIndex, presentation, reservedNames()))
+			return {action: "none", section: track.section};
 		return {
 			action: "move",
 			section: track.section,
-			destIndex: down ? at + 1 : at
+			destIndex: destIndex
 		};
 	}
 
 	// ---------------------------------------------------------------
-	// inline rename -- only for a section the user just created
+	// inline rename -- any section the rail allows to rename
 	// ---------------------------------------------------------------
 
 	function endRename(host) {
@@ -790,7 +812,7 @@
 			keyEvents(true);
 			endRename(host);
 			if (commit)
-				api.renameSection(presentation, header.section, value);
+				api.renameSection(presentation, header.section, value, reservedNames());
 			if (onDone)
 				onDone(commit);
 		}
@@ -872,9 +894,8 @@
 	// a handful of one-line hooks.
 	// ---------------------------------------------------------------
 
-	function ratioOf() {
-		return (root.AscCommon && root.AscCommon.AscBrowser
-			&& root.AscCommon.AscBrowser.retinaPixelRatio) || 1;
+	function useRatio(ratio) {
+		return (typeof ratio === "number" && isFinite(ratio) && ratio > 0) ? ratio : 1;
 	}
 
 	function planOf(host) {
@@ -885,7 +906,6 @@
 		return host && host.m_oWordControl && host.m_oWordControl.m_oLogicDocument;
 	}
 
-	/** Called from CalculatePlaces. Stores the plan on the host. */
 	/**
 	 * Whether this deck gets a rail at all.
 	 *
@@ -902,6 +922,7 @@
 			&& !(presentation.IsVisioEditor && presentation.IsVisioEditor()));
 	}
 
+	/** Called from CalculatePlaces. Stores the plan on the host. */
 	function hostLayout(host, metrics) {
 		var presentation = presentationOf(host);
 		host.sectionPlan = railable(presentation, host) ? layout(presentation, metrics) : null;
@@ -940,7 +961,7 @@
 		var plan = host && host.sectionPlan;
 		if (!plan || !api2)
 			return null;
-		var r = ratio || ratioOf();
+		var r = useRatio(ratio);
 		var presentation = presentationOf(host);
 		// resolve the chip here, not from the hover state: a click can
 		// arrive without a preceding move (touch, or a fast click).
@@ -958,14 +979,12 @@
 		}
 		if (hitTitle(header, x, y, r) && canRename(header.section, presentation))
 			return {action: "rename", header: header};
+		if (!canDrag(header.section))
+			return {action: "locked"};
 		host.HeaderTrack = beginTrack(header.section, x, y);
 		return {action: "track"};
 	}
 
-	/**
-	 * Mouse move. Returns {cursor, tooltip, repaint}; the caller only
-	 * repaints when asked, so hovering does not redraw every frame.
-	 */
 	/**
 	 * What the pointer is over, derived on demand from the CURRENT
 	 * layout.
@@ -983,7 +1002,7 @@
 		var header = hitHeader(plan.headers, at.x, at.y);
 		var chip = header
 			? null
-			: chipAt(presentationOf(host), host.m_arrPages, at.x, at.y, ratio || ratioOf(), plan);
+			: chipAt(presentationOf(host), host.m_arrPages, at.x, at.y, useRatio(ratio), plan);
 		return {
 			section: header ? header.section : null,
 			header: header,
@@ -992,11 +1011,15 @@
 		};
 	}
 
+	/**
+	 * Mouse move. Returns {cursor, tooltip, repaint}; the caller only
+	 * repaints when asked, so hovering does not redraw every frame.
+	 */
 	function hostMouseMove(host, x, y, ratio) {
 		var plan = host && host.sectionPlan;
 		if (!plan)
 			return {cursor: null, tooltip: "", repaint: false};
-		var r = ratio || ratioOf();
+		var r = useRatio(ratio);
 		if (host.HeaderTrack) {
 			host.sectionPointer = {x: x, y: y};
 			var state = moveTrack(host.HeaderTrack, x, y);
@@ -1015,8 +1038,10 @@
 			tooltip = now.header.collapsed ? "Abschnitt ausklappen" : "Abschnitt einklappen";
 		else if (now.header && canRename(now.header.section, presentationOf(host)))
 			tooltip = "Abschnitt benennen";
+		var draggable = now.header && canDrag(now.header.section);
+		var onChevron = now.header && hitChevron(now.header, x, y, r);
 		return {
-			cursor: (now.header || now.chipHot) ? "pointer" : null,
+			cursor: (draggable || now.chipHot || onChevron) ? "pointer" : null,
 			tooltip: tooltip,
 			repaint: changed
 		};
@@ -1034,7 +1059,7 @@
 		if (!ended || ended.action !== "move")
 			return null;
 		var api2 = sectionsApi();
-		if (api2 && api2.moveSection(presentation, ended.section, ended.destIndex))
+		if (api2 && api2.moveSection(presentation, ended.section, ended.destIndex, reservedNames()))
 			return {action: "moved"};
 		return null;
 	}
@@ -1101,6 +1126,7 @@
 	function hostClearHover(host) {
 		host.sectionPointer = null;
 		host.sectionGap = null;
+		host.HeaderTrack = null;
 	}
 
 	var api = {
@@ -1108,6 +1134,7 @@
 		setCollapsed: setCollapsed,
 		colors: colors,
 		canRename: canRename,
+		canDrag: canDrag,
 		layout: layout,
 		extraLength: extraLength,
 		dropTarget: dropTarget,

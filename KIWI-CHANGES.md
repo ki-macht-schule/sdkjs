@@ -180,7 +180,7 @@ reparabel, eine verlorene Sitzung nicht; der Stack geht mit Präfix
 | `common/Shapes/Serialize.js` | `Load`: `PresentationSections.apply` |
 | `slide/Editor/Format/Presentation.js` | **kein Delta.** `insertSlide`, `removeSlideByObject`, `shiftSlides` werden in `PresentationSections.hookPresentation` als Prototype-Wrapper installiert |
 | `CChangesDrawingsContentPresentation` | `hookHistoryChanges` wrappt `Load` / `Redo` / `Undo` — steht in keinem git diff; `write()` warnt, wenn der Hook fehlt |
-| `slide/Drawing/DrawingDocument.js` | **14** Hooks, s.u. (+153 / −15 gegen HEAD) |
+| `slide/Drawing/DrawingDocument.js` | **14** Hooks in `apply-kiwi-rail.py` |
 
 ### `apply-kiwi-rail.py` ist der Rebase-Check
 
@@ -196,7 +196,7 @@ python3 apply-kiwi-rail.py slide/Drawing/DrawingDocument.js
 ```
 
 Das Skript nennt den Hook, dessen Anker gewandert ist — statt eines
-Merge-Konflikts über 187 Zeilen bekommt man einen Namen.
+Merge-Konflikts bekommt man einen Namen.
 
 Die Hooks, in Reihenfolge:
 
@@ -258,9 +258,14 @@ muss in den Rand.
 - **Rechte**: `canAddSection` / `canRenameSection` / `moveSection`
   prüfen `CanEdit()`, und die Affordanzen verschwinden mit — im
   View-Only-Modus ist das `+` nicht nur wirkungslos, es ist weg.
-- **Umbenennen**: erlaubt, wenn der Name *keine* Unit-Id ist — eine
-  Unit-Section umzubenennen würde den Titel-Lookup und die Identität
-  des Decks brechen. Das Prädikat überlebt einen Reload, ein
+- **Reserviert**: `document.options.kiwiReserved` ist die Liste.
+  Das Modell kennt keinen kiwi-Namen. Fehlt die Liste oder ist sie
+  kein Array, ist jeder Name reserviert. Die Leiste startet auf
+  so einem Balken keinen Drag; ein Drop vor eine reservierte erste
+  Section wird verworfen. Chevron bleibt.
+- **Umbenennen**: erlaubt, wenn der Name *keine* Unit-Id ist und
+  nicht auf `kiwiReserved` steht — eine Unit-Section umzubenennen
+  würde den Titel-Lookup und die Identität des Decks brechen. Das Prädikat überlebt einen Reload, ein
   „frisch angelegt“-Flag tat das nicht. `rail.startRename` legt ein
   `<input>` in den Container, schluckt alle Maus- und Tastenevents
   (sonst werden die Anschläge zu Editor-Shortcuts) und fokussiert im
@@ -305,8 +310,8 @@ here; remountOfficeHijacks in the editor handles those".)
 Tests:
 
 ```
-node slide/Editor/Format/PresentationSections.test.js      #  70 checks
-node slide/Editor/Format/PresentationSectionRail.test.js   # 103 checks
+node slide/Editor/Format/PresentationSections.test.js      #  78 checks
+node slide/Editor/Format/PresentationSectionRail.test.js   # 118 checks
 node slide/Editor/Format/PresentationThemeRemount.test.js  #  3 checks
 python3 build-sdk-all.test.py
 ```

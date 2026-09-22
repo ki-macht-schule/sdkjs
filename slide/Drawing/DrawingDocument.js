@@ -4447,7 +4447,8 @@ function CThumbnailsManager(editorPage)
 		if (0 === global_mouseEvent.Button && oThis.KiwiRail())
 		{
 			var railPos = oThis.ConvertCoords(global_mouseEvent.X, global_mouseEvent.Y);
-			var railDown = oThis.KiwiRail().hostMouseDown(oThis, railPos.X, railPos.Y);
+			var railDown = oThis.KiwiRail().hostMouseDown(oThis, railPos.X, railPos.Y,
+				(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1);
 			if (railDown)
 			{
 				if ("rename" === railDown.action)
@@ -4638,7 +4639,8 @@ function CThumbnailsManager(editorPage)
 		if (oThis.HeaderTrack && oThis.KiwiRail())
 		{
 			var trackPos = oThis.ConvertCoords(global_mouseEvent.X, global_mouseEvent.Y);
-			var railTrack = oThis.KiwiRail().hostMouseMove(oThis, trackPos.X, trackPos.Y);
+			var railTrack = oThis.KiwiRail().hostMouseMove(oThis, trackPos.X, trackPos.Y,
+				(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1);
 			oThis.m_oWordControl.m_oThumbnails.HtmlElement.style.cursor = railTrack.cursor || "move";
 			return;
 		}
@@ -4715,7 +4717,8 @@ function CThumbnailsManager(editorPage)
 
 		var cursor_moved = "default";
 		var railHover = oThis.KiwiRail()
-			? oThis.KiwiRail().hostMouseMove(oThis, pos.X, pos.Y)
+			? oThis.KiwiRail().hostMouseMove(oThis, pos.X, pos.Y,
+				(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1)
 			: null;
 		if (railHover)
 		{
@@ -6545,13 +6548,12 @@ function CThumbnailsManager(editorPage)
 				? thumbnailWidth * slidesCount
 				: thumbnailHeight * slidesCount;
 			const railSize = window.AscCommonSlide && window.AscCommonSlide.PresentationSectionRail;
-			if (railSize && !this.IsMasterMode() && oPresentation && oPresentation.Sections
-				&& oPresentation.Sections.length && !oPresentation.IsVisioEditor()) {
+			if (railSize && railSize.railable(oPresentation, this)) {
 				cumulativeThumbnailLength += railSize.extraLength(
 					oPresentation,
 					slidesCount,
 					(isHorizontalOrientation ? thumbnailWidth : thumbnailHeight) + 3 * this.const_border_w,
-					AscCommon.AscBrowser.retinaPixelRatio
+					(AscCommon.AscBrowser && AscCommon.AscBrowser.retinaPixelRatio) || 1
 				);
 			}
 		}
