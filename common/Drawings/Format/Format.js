@@ -22,6 +22,10 @@
  * terms at http://creativecommons.org/licenses/by-sa/4.0/legalcode
  *
  */
+/*
+ * MODIFIED by KI macht Schule gGmbH, 2026: read PPTY record 7 (p14:sectionLst).
+ * See KIWI-CHANGES.md in the repository root for the full delta.
+ */
 
 "use strict";
 
@@ -16090,6 +16094,13 @@
 						}
 
 						s.Seek2(_end_rec2);
+						break;
+					}
+					case 7: {
+						if (typeof AscCommonSlide !== "undefined" && AscCommonSlide.PresentationSections)
+							oPresentattion.pendingSections = AscCommonSlide.PresentationSections.read(s);
+						else
+							s.SkipRecord();
 						break;
 					}
 					case 8: {
